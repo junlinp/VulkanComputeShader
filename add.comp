@@ -1,0 +1,13 @@
+#version 450
+
+// This layout alleviates the need to query the offsets for definitions. The rules of std140 layout explicitly state the layout arrangement of any interface block declared with this layout. This also means that such an interface block can be shared across programs, much like shared. The only downside to this layout type is that the rules for packing elements into arrays/structs can introduce a lot of unnecessary padding.
+//The rules for std140 layout are covered quite well in the OpenGL specification (OpenGL 4.5, Section 7.6.2.2, page 137). Among the most important is the fact that arrays of types are not necessarily tightly packed. An array of floats in such a block will not be the equivalent to an array of floats in C/C++. The array stride (the bytes between array elements) is always rounded up to the size of a vec4 (ie: 16-bytes). So arrays will only match their C/C++ definitions if the type is a multiple of 16 bytes
+layout(binding = 0) buffer output_arr {
+    uint arr[];
+};
+layout(local_size_x = 1) in;
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    arr[x] = x * x;
+}
