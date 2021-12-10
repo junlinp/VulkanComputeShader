@@ -2,6 +2,8 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
+#include "vulkan_helper.hpp"
+
 void PrintProperties(const vk::PhysicalDeviceProperties& properties) {
   std::cout << "Device name : " << properties.deviceName << std::endl;
   std::cout << "Device ID : " << properties.deviceID << std::endl;
@@ -67,6 +69,7 @@ VkPipelineShaderStageCreateInfo LoadShader(std::string file_name,
   return shader_stage_create_info;
 }
 int main(int argc, char** argv) {
+    /*
   vk::ApplicationInfo AppInfo{"Super Compute Shader", 1, nullptr, 0,
                               VK_API_VERSION_1_2};
 
@@ -159,12 +162,14 @@ int main(int argc, char** argv) {
 
   device.bindBufferMemory(out_buffer, out_buffer_memory, 0);
 
+  
 
+  // There are related to the shader resource interface of the shader source code.
   const std::vector<vk::DescriptorSetLayoutBinding> DescriptorSetLayoutBinding =
       {
           {0, vk::DescriptorType::eStorageBuffer, 1,
         vk::ShaderStageFlagBits::eCompute, nullptr}
-        // binding 0 is a Storage Buffer, array size 1
+        // binding 0 is a Storage Buffer, descriptor array size is 1
         // visible to Compute Stage
        };
 
@@ -183,14 +188,14 @@ int main(int argc, char** argv) {
   VkShaderModule shader_module;
 
   vk::PipelineShaderStageCreateInfo pipeline_shader_create_info = LoadShader(
-      "../comp.spv", device, shader_module, VK_SHADER_STAGE_COMPUTE_BIT);
+      "./comp.spv", device, shader_module, VK_SHADER_STAGE_COMPUTE_BIT);
 
   vk::ComputePipelineCreateInfo compute_pipeline_create_info(
       vk::PipelineCreateFlags(), pipeline_shader_create_info, pipeline_layout);
 
   vk::Pipeline compute_pipeline = device.createComputePipeline(
       pipeline_cache, compute_pipeline_create_info);
-
+  // update argument data
   vk::DescriptorPoolSize descriptor_pool_size(
       vk::DescriptorType::eStorageBuffer, 1);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
@@ -203,6 +208,7 @@ int main(int argc, char** argv) {
   const std::vector<vk::DescriptorSet> DescriptorSets =
       device.allocateDescriptorSets(DescriptorSetAllocInfo);
   vk::DescriptorSet DescriptorSet = DescriptorSets.front();
+
   vk::DescriptorBufferInfo OutBufferInfo(out_buffer, 0,
                                          buffer_size);
 
@@ -212,6 +218,7 @@ int main(int argc, char** argv) {
   };
   device.updateDescriptorSets(WriteDescriptorSets, {});
 
+  //  executate data
   vk::CommandPoolCreateInfo CommandPoolCreateInfo(vk::CommandPoolCreateFlags(),
                                                   compute_family_queue_index);
   vk::CommandPool CommandPool = device.createCommandPool(CommandPoolCreateInfo);
@@ -256,5 +263,28 @@ int main(int argc, char** argv) {
   }
   std::cout << std::endl;
   device.unmapMemory(out_buffer_memory);
+*/
+
+  VulkanHelper helper;
+  helper.InitializeContext();
+  auto ptr = helper.MallocGPUMemory(32 * sizeof(int32_t));
+  int32_t input[32];
+  for (int i = 0; i < 32; i++) {
+      std::cout << "Write : " << i << std::endl;
+      input[i] = i + 10;
+  }
+  std::cout << "Copy memory Host to Device\n" << std::endl;
+  helper.CopyMemory(ptr, input, 32 * sizeof(int32_t));
+  vk::Pipeline compute_pipeline_2 = helper.BuildComputeShaderSPIV("./comp.spv", 1);
+
+  std::cout << "Executable" << std::endl;
+  helper.ExecuteProgram(compute_pipeline_2, 32, 1, 1, ptr);
+
+  int32_t output[32];
+  helper.CopyMemory(output, ptr, 32 * sizeof(int32_t));
+  for (int i = 0; i < 32; i++) {
+      std::cout << output[i] << " ";
+  }
+  std::cout << std::endl;
   return 0;
 }
