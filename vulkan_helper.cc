@@ -35,10 +35,10 @@ bool VulkanHelper::InitializeContext() {
     return false;
   }
   for (vk::PhysicalDevice& device : physical_devices) {
-    detail::PrintProperties(device.getProperties());
+    // detail::PrintProperties(device.getProperties());
   }
 
-  std::printf("Choose the default device\n");
+  // std::printf("Choose the default device\n");
 
   physical_device_ = physical_devices[0];
 
@@ -65,6 +65,30 @@ bool VulkanHelper::InitializeContext() {
 
   // Create Logic Device
   device_ = physical_device_.createDevice(device_info);
+
+  // create Descriptor set
+  vk::DescriptorPoolSize descriptor_pool_size(
+      vk::DescriptorType::eStorageBuffer, 1);
+  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
+      vk::DescriptorPoolCreateFlags(), 1, descriptor_pool_size);
+  descriptor_pool_ = device_.createDescriptorPool(descriptor_pool_create_info);
+
+  vk::CommandPoolCreateInfo CommandPoolCreateInfo(vk::CommandPoolCreateFlags(),
+                                                  compute_queue_family_index_);
+  vk::CommandPool CommandPool =
+      device_.createCommandPool(CommandPoolCreateInfo);
+
+  vk::CommandBufferAllocateInfo CommandBufferAllocInfo(
+      CommandPool,                       // Command Pool
+      vk::CommandBufferLevel::ePrimary,  // Level
+      1);                                // Num Command Buffers
+  const std::vector<vk::CommandBuffer> CmdBuffers =
+      device_.allocateCommandBuffers(CommandBufferAllocInfo);
+  if (CmdBuffers.empty()) {
+    std::printf("Create Command Buffer Fails\n");
+    return false;
+  }
+  cmd_buffer_ = CmdBuffers.front();
   return true;
 }
 
@@ -136,12 +160,22 @@ vk::Pipeline VulkanHelper::BuildComputeShaderSPIV(
 
   descriptor_set_layout_ =
       device_.createDescriptorSetLayout(descriptor_set_layout_create_info);
+  vk::DescriptorSetAllocateInfo DescriptorSetAllocInfo(descriptor_pool_, 1,
+                                                       &descriptor_set_layout_);
 
+  const std::vector<vk::DescriptorSet> descriptor_sets =
+      device_.allocateDescriptorSets(DescriptorSetAllocInfo);
+
+  if (descriptor_sets.empty()) {
+    std::printf("Descriptor Set Empty\n");
+    // return false;
+    // return;
+  }
+  vk::DescriptorSet descriptor_set_ = descriptor_sets[0];
   vk::PipelineLayoutCreateInfo pipeline_layout_create_info{
       vk::PipelineLayoutCreateFlags(), descriptor_set_layout_};
 
-  pipeline_layout_ =
-      device_.createPipelineLayout(pipeline_layout_create_info);
+  pipeline_layout_ = device_.createPipelineLayout(pipeline_layout_create_info);
   vk::PipelineCache pipeline_cache =
       device_.createPipelineCache(vk::PipelineCacheCreateInfo());
 

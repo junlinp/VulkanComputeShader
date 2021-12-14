@@ -1,0 +1,53 @@
+#version 450
+
+layout(set = 0, binding = 0) buffer input_buffer {
+    ivec4 lhs[];
+};
+
+layout(set = 0, binding = 1) buffer output_buffer {
+    ivec4 rhs[];
+};
+
+layout(set = 0, binding = 2) buffer result_buffer {
+    int result[];
+};
+
+layout(set = 0, binding = 3) buffer _ {
+    int col_size;
+};
+
+layout(local_size_x = 32, local_size_y = 32) in;
+
+shared ivec4 shared_lhs[32 * 32];
+shared ivec4 shared_rhs[32 * 32];
+
+// in uvec3 gl_NumWorkGroups ; Same numbers as in the glDispatchCompute call
+// const uvec3 gl_WorkGroupSize ; Same numbers as in the layout local_size_*
+// in uvec3 gl_WorkGroupID ;Which workgroup this thread is in
+// in uvec3 gl_LocalInvocationID ;  Where this thread is in the current workgroup
+// in uvec3 gl_GlobalInvocationID ; Where this thread is in all the work items
+// in uint gl_LocalInvocationIndex ; 1D representation of the gl_LocalInvocationID (used for indexing into a shared array)
+void main() {
+    uint gx = gl_WorkGroupID.x;
+    uint gy = gl_WorkGroupID.y;
+    uint tx = gl_LocalInvocationID.x;
+    uint ty = gl_LocalInvocationID.y;
+    uint x = gx * gl_WorkGroupSize.x + tx;
+    uint y = gy * gl_WorkGroupSize.y + ty;
+    shared_lhs[tx * 32 + ty] = lhs[x * 32 + ty];
+    //shared_rhs[ty * 32 + (tx + ty) % 32] = rhs[y * 32 + (tx + ty) % 32];
+    //groupMemoryBarrier();
+    memoryBarrierShared();
+    //barrier();
+    int reduce = 0;
+    ivec4 reduce_vec = ivec4(0, 0, 0, 0);
+    for (uint i = 0; i < 32; i++) {
+        ivec4 temp = shared_lhs[tx * 32 + i] - rhs[y * 32 + (i) % 32];
+        //int temp = shared_lhs[tx * 128 + i] - rhs[y * 128 + i];
+        //reduce += temp.x * temp.x + temp.y * temp.y + temp.z*temp.z + temp.w*temp.w;
+        reduce_vec += temp * temp;
+    }
+    reduce = reduce_vec.x + reduce_vec.y + reduce_vec.z + reduce_vec.w;
+
+    result[x * col_size + y] = reduce;
+}

@@ -270,18 +270,17 @@ int main(int argc, char** argv) {
   auto ptr = helper.MallocGPUMemory(32 * sizeof(int32_t));
   int32_t input[32];
   for (int i = 0; i < 32; i++) {
-      std::cout << "Write : " << i << std::endl;
       input[i] = i + 10;
   }
-  std::cout << "Copy memory Host to Device\n" << std::endl;
-  helper.CopyMemory(ptr, input, 32 * sizeof(int32_t));
-  vk::Pipeline compute_pipeline_2 = helper.BuildComputeShaderSPIV("./comp.spv", 1);
+  auto output_ptr = helper.MallocGPUMemory(32 * sizeof(int32_t));
 
-  std::cout << "Executable" << std::endl;
-  helper.ExecuteProgram(compute_pipeline_2, 32, 1, 1, ptr);
+  helper.CopyMemory(ptr, input, 32 * sizeof(int32_t));
+  //vk::Pipeline compute_pipeline_2 = helper.BuildComputeShaderSPIV("./comp.spv", 2);
+
+  helper.ExecuteProgram("./comp.spv", 32, 1, 1, ptr, output_ptr);
 
   int32_t output[32];
-  helper.CopyMemory(output, ptr, 32 * sizeof(int32_t));
+  helper.CopyMemory(output, output_ptr, 32 * sizeof(int32_t));
   for (int i = 0; i < 32; i++) {
       std::cout << output[i] << " ";
   }
