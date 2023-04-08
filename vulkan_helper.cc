@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <vulkan/vulkan_enums.hpp>
 
 namespace detail {
 
@@ -23,9 +24,19 @@ void PrintProperties(const vk::PhysicalDeviceProperties& properties) {
 
 bool VulkanHelper::InitializeContext() {
   vk::ApplicationInfo app_info{"ComputeShader", 1, nullptr, 0,
-                               VK_API_VERSION_1_2};
+                               VK_API_VERSION_1_0};
+  //vk::InstanceCreateInfo instance_create_info{vk::InstanceCreateFlags(),
+  //                                            &app_info, nullptr, nullptr};
   vk::InstanceCreateInfo instance_create_info{vk::InstanceCreateFlags(),
                                               &app_info, nullptr, nullptr};
+
+  instance_create_info.setFlags(
+      vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR);
+  std::vector<const char *> requiredExtensions;
+  requiredExtensions.emplace_back(
+      VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+  instance_create_info.setPEnabledExtensionNames(requiredExtensions);
+
   vk::Instance instance = vk::createInstance(instance_create_info);
 
   std::vector<vk::PhysicalDevice> physical_devices =
@@ -35,7 +46,7 @@ bool VulkanHelper::InitializeContext() {
     return false;
   }
   for (vk::PhysicalDevice& device : physical_devices) {
-    // detail::PrintProperties(device.getProperties());
+    detail::PrintProperties(device.getProperties());
   }
 
   // std::printf("Choose the default device\n");
@@ -186,6 +197,8 @@ vk::Pipeline VulkanHelper::BuildComputeShaderSPIV(
   vk::ComputePipelineCreateInfo compute_pipeline_create_info{
       vk::PipelineCreateFlags(), pipeline_shader_create_info, pipeline_layout_};
 
-  return device_.createComputePipeline(pipeline_cache,
+  vk::ResultValue<vk::Pipeline> res_pipeline = device_.createComputePipeline(pipeline_cache,
                                        compute_pipeline_create_info);
+
+  return res_pipeline.value; 
 }
