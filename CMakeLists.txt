@@ -29,3 +29,7 @@ add_executable(match_bench_mark match_test.cc)
 
 target_link_libraries(match_bench_mark PUBLIC Vulkan::Vulkan vulkan_helper GTest::GTest)
 set_property(TARGET match_bench_mark PROPERTY CXX_STANDARD 17)
+
+add_executable(main_test main.cpp)
+target_link_libraries(main_test PUBLIC Vulkan::Vulkan vulkan_helper)
+set_property(TARGET main_test PROPERTY CXX_STANDARD 17)

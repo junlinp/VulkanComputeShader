@@ -9,7 +9,7 @@ layout(set = 0, binding = 1) buffer output_buffer{
     uint output_arr[];
 };
 
-layout(local_size_x = 1) in;
+//layout(local_size_x = 1) in;
 
 void main() {
     uint x = gl_GlobalInvocationID.x;

@@ -27,8 +27,8 @@ void DistanceGPU(int* a, std::size_t a_size, int* b, std::size_t b_size, int* re
 
     //auto pipeline = vulkan.BuildComputeShaderSPIV("./match.spv", 4);
 
-    vulkan.ExecuteProgram("./distance.spv", a_size / 32, b_size / 32, 1, device_a, device_b, device_c, device_size);
-
+    vulkan.ExecuteProgram("../distance.spv", a_size / 32, b_size / 32, 1, device_a, device_b, device_c, device_size);
+    std::cout << "Running finish" << std::endl;
     vulkan.CopyMemory(result_matrix, device_c, sizeof(int) * a_size * b_size);
 }
 

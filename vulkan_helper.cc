@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan_enums.hpp>
 
@@ -10,7 +11,7 @@ namespace detail {
 void PrintProperties(const vk::PhysicalDeviceProperties& properties) {
   std::cout << "Device name : " << properties.deviceName << std::endl;
   std::cout << "Device ID : " << properties.deviceID << std::endl;
-  std::cout << "api Version : " << properties.apiVersion << std::endl;
+  //std::cout << "api Version : " << properties.apiVersion << std::endl;
   auto api_version = properties.apiVersion;
   std::cout << "Vulkan version : " << VK_VERSION_MAJOR(api_version) << "."
             << VK_VERSION_MINOR(api_version) << "."
@@ -24,7 +25,7 @@ void PrintProperties(const vk::PhysicalDeviceProperties& properties) {
 
 bool VulkanHelper::InitializeContext() {
   vk::ApplicationInfo app_info{"ComputeShader", 1, nullptr, 0,
-                               VK_API_VERSION_1_0};
+                               VK_API_VERSION_1_2};
   //vk::InstanceCreateInfo instance_create_info{vk::InstanceCreateFlags(),
   //                                            &app_info, nullptr, nullptr};
   vk::InstanceCreateInfo instance_create_info{vk::InstanceCreateFlags(),
@@ -77,9 +78,11 @@ bool VulkanHelper::InitializeContext() {
   // Create Logic Device
   device_ = physical_device_.createDevice(device_info);
 
+
+  auto storage_buffer_device_limits = physical_device_.getProperties().limits.maxPerStageDescriptorStorageBuffers;
   // create Descriptor set
   vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, 1);
+      vk::DescriptorType::eStorageBuffer, storage_buffer_device_limits);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlags(), 1, descriptor_pool_size);
   descriptor_pool_ = device_.createDescriptorPool(descriptor_pool_create_info);
@@ -145,6 +148,10 @@ BufferWrap VulkanHelper::MallocGPUMemory(std::size_t sizes) {
 vk::Pipeline VulkanHelper::BuildComputeShaderSPIV(
     const std::string& binary_path, std::size_t argument_size) {
   std::ifstream ifs(binary_path, std::ifstream::binary);
+
+  if (!ifs.is_open()) {
+    throw std::invalid_argument("SPIV file can't open");
+  }
   std::filebuf* pbuf = ifs.rdbuf();
   std::size_t size = pbuf->pubseekoff(0, ifs.end, ifs.in);
   pbuf->pubseekpos(0, ifs.in);
@@ -159,6 +166,9 @@ vk::Pipeline VulkanHelper::BuildComputeShaderSPIV(
 
   vk::Result result = device_.createShaderModule(&shader_module_create_info,
                                                  nullptr, &shader_module);
+  if (result != vk::Result::eSuccess) {
+    throw std::invalid_argument("Create Shader Module Fails");
+  }
 
   std::vector<vk::DescriptorSetLayoutBinding> descriptor_set_layout_binding;
   for (uint32_t i = 0; i < argument_size; i++) {
@@ -166,14 +176,15 @@ vk::Pipeline VulkanHelper::BuildComputeShaderSPIV(
         {i, vk::DescriptorType::eStorageBuffer, 1,
          vk::ShaderStageFlagBits::eCompute, nullptr});
   }
-  vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
-      vk::DescriptorSetLayoutCreateFlagBits(), descriptor_set_layout_binding};
+
+  vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(
+      vk::DescriptorSetLayoutCreateFlagBits(), descriptor_set_layout_binding);
 
   descriptor_set_layout_ =
       device_.createDescriptorSetLayout(descriptor_set_layout_create_info);
   vk::DescriptorSetAllocateInfo DescriptorSetAllocInfo(descriptor_pool_, 1,
                                                        &descriptor_set_layout_);
-
+  std::cout << "allocateDescriptor sets" << std::endl;
   const std::vector<vk::DescriptorSet> descriptor_sets =
       device_.allocateDescriptorSets(DescriptorSetAllocInfo);
 
@@ -182,7 +193,7 @@ vk::Pipeline VulkanHelper::BuildComputeShaderSPIV(
     // return false;
     // return;
   }
-  vk::DescriptorSet descriptor_set_ = descriptor_sets[0];
+  descriptor_set_ = descriptor_sets[0];
   vk::PipelineLayoutCreateInfo pipeline_layout_create_info{
       vk::PipelineLayoutCreateFlags(), descriptor_set_layout_};
 

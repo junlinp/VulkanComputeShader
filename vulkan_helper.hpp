@@ -1,3 +1,4 @@
+#include <vulkan/vulkan_core.h>
 #ifndef VULKAN_HELPER_HPP_
 
 #include "vulkan/vulkan.hpp"
@@ -47,6 +48,7 @@ bool CopyMemory(BufferWrap& dest, void* sour, std::size_t size) {
         if (compute_pipeline_cache_.find(binary_path) == compute_pipeline_cache_.end()) {
             compute_pipeline_cache_[binary_path] = BuildComputeShaderSPIV(binary_path, sizeof...(args));
         }
+        std::cout << "Build Shader Finish" << std::endl;
 
         vk::Pipeline compute_pipeline = compute_pipeline_cache_[binary_path];
 
@@ -54,7 +56,7 @@ bool CopyMemory(BufferWrap& dest, void* sour, std::size_t size) {
 
         (descriptor_buffer_infos.push_back({args.buffer_, 0, args.size_}), ...);
 
-        std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {};
+        std::vector<vk::WriteDescriptorSet> WriteDescriptorSets;
         uint32_t index = 0;
         for (vk::DescriptorBufferInfo& info : descriptor_buffer_infos) {
             WriteDescriptorSets.push_back(
@@ -64,9 +66,10 @@ bool CopyMemory(BufferWrap& dest, void* sour, std::size_t size) {
             );
         }
 
+        std::cout << "update DescriptorSets" << std::endl;
+        std::cout << "WriteDescriptorSets : " << WriteDescriptorSets.size();
         device_.updateDescriptorSets(WriteDescriptorSets, {});
-
-        
+        std::cout << "Here" << std::endl;
 
         vk::CommandBufferBeginInfo CmdBufferBeginInfo(
         vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
